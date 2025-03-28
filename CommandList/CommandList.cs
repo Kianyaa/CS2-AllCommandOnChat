@@ -1,10 +1,9 @@
-﻿using System.Text.RegularExpressions;
-using CounterStrikeSharp.API.Core;
+﻿using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Commands;
 using Microsoft.Extensions.Logging;
+using CounterStrikeSharp.API.Modules.Utils;
 
 namespace CommandList;
-
 
 public class CommandConfig
 {
@@ -20,9 +19,9 @@ public class Config : BasePluginConfig
 public class CommandListPlugin : BasePlugin, IPluginConfig<Config>
 {
     public override string ModuleName => "CommandListPlugin";
-    public override string ModuleVersion => "1.0.0";
+    public override string ModuleVersion => "1.0.1";
     public override string ModuleAuthor => "Kianya";
-    public override string ModuleDescription => "A simple plugin that shows all commands available via console";
+    public override string ModuleDescription => "A simple plugin that shows all commands available via chat";
 
     public Config Config { get; set; } = new Config();
 
@@ -45,54 +44,32 @@ public class CommandListPlugin : BasePlugin, IPluginConfig<Config>
     }
 
     // Method to show all available commands
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     private void ShowAvailableCommands(CCSPlayerController? player, CommandInfo commandInfo)
     {
-        // Sending a header with color codes
-        commandInfo.ReplyToCommand(GetColoredText("{green}[Command Name]  :  [Description]{default}"));
-
-        foreach (var command in Config.CommandList)
+        if (player != null && player.IsValid && player.PlayerPawn.IsValid &&
+            player.Connected == PlayerConnectedState.PlayerConnected)
         {
-            // Using color codes for command output
-            commandInfo.ReplyToCommand($"{GetColoredText($"{{lightblue}}{command.Value.Command}{{default}}")}  :  {GetColoredText($"{{white}}{command.Value.Description}{{default}}")}");
-        }
-    }
+            // Sending a header with color codes
+            player?.PrintToChat(
+                $" {ChatColors.Green}[Command] {ChatColors.Default} -  {ChatColors.Green} [Description]");
 
-    // Method to replace color codes with CS2 color codes
-    private static string GetColoredText(string message)
-    {
-        Dictionary<string, int> colorMap = new()
-        {
-            { "{default}", 1 },
-            { "{white}", 1 },
-            { "{darkred}", 2 },
-            { "{purple}", 3 },
-            { "{green}", 4 },
-            { "{lightgreen}", 5 },
-            { "{slimegreen}", 6 },
-            { "{red}", 7 },
-            { "{grey}", 8 },
-            { "{yellow}", 9 },
-            { "{invisible}", 10 },
-            { "{lightblue}", 11 },
-            { "{blue}", 12 },
-            { "{lightpurple}", 13 },
-            { "{pink}", 14 },
-            { "{fadedred}", 15 },
-            { "{gold}", 16 }
-        };
-
-        string pattern = "{(\\w+)}"; // Matches {word}
-        string replaced = Regex.Replace(message, pattern, match =>
-        {
-            string colorCode = match.Groups[1].Value;
-            if (colorMap.TryGetValue("{" + colorCode + "}", out int replacement))
+            foreach (var command in Config.CommandList)
             {
-                return Convert.ToChar(replacement).ToString(); // Get the color code for CS2
-            }
-            return match.Value; // If color not found, leave it unchanged
-        });
+                // Using color codes for command output
+                player?.PrintToChat(
+                    $" {ChatColors.LightBlue}{command.Value.Command} {ChatColors.Default}:  {command.Value.Description}");
 
-        return $"\u200B{replaced}"; // Non-breaking space hack for ensuring colors work
+            }
+        }
+
+        // If the player is not valid, we will log the error
+        else
+        {
+            Logger.LogError("Player is not valid");
+        }
+
+        return;
     }
 }
 
